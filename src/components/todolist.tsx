@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 
 import {
   collection,
-  addDoc,	
+  addDoc,
   getDocs,
   deleteDoc,
   doc,
@@ -22,9 +22,7 @@ type Task = {
 
 export default function TodoList() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [timeRemaining, setTimeRemaining] = useState<{ [key: string]: string }>(
-    {}
-  );
+  const [timeRemaining, setTimeRemaining] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -109,70 +107,114 @@ export default function TodoList() {
     setTasks(tasks.filter((task) => task.id !== id));
   };
 
+  const editTask = async (task: Task): Promise<void> => {
+    const { value: formValues } = await Swal.fire({
+      title: 'Edit Tugas',
+      html:
+        `<input id="swal-input1" class="swal2-input" value="${task.text}" placeholder="Nama tugas">` +
+        `<input id="swal-input2" type="datetime-local" class="swal2-input" value="${new Date(task.deadline).toISOString().slice(0, 16)}">`,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Simpan',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        return [
+          (document.getElementById('swal-input1') as HTMLInputElement)?.value,
+          (document.getElementById('swal-input2') as HTMLInputElement)?.value,
+        ];
+      },
+    });
+
+    if (formValues && formValues[0] && formValues[1]) {
+      const updatedTask = {
+        ...task,
+        text: formValues[0],
+        deadline: formValues[1],
+      };
+
+      await updateDoc(doc(db, 'tasks', task.id), {
+        text: updatedTask.text,
+        deadline: updatedTask.deadline,
+      });
+
+      setTasks((prevTasks) =>
+        prevTasks.map((t) => (t.id === task.id ? updatedTask : t))
+      );
+    }
+  };
+
   return (
-    <div className="max-w-md mx-auto mt-10 p-4 bg-white shadow-md rounded-lg">
-      <h1 className="text-2xl text-emerald-500 font-bold mb-4">To-Do List</h1>
-      <div className="flex justify-center mb-4">
+    <div className="max-w-md mx-auto mt-10 p-6 bg-gradient-to-br from-purple-400 via-purple-500 to-purple-700 shadow-xl rounded-2xl font-sans text-white">
+      <h1 className="text-3xl font-bold mb-6 text-center text-white">
+        To-Do List
+      </h1>
+
+      <div className="flex justify-center mb-6">
         <button
           onClick={addTask}
-          className="bg-slate-500 text-white px-4 py-2 rounded"
+          className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-lg shadow-md transition duration-300"
         >
           Tambah Tugas
         </button>
       </div>
-      <ul>
+
+      <ul className="space-y-3">
         <AnimatePresence>
           {tasks.map((task) => {
             const timeLeft = calculateTimeRemaining(task.deadline);
             const isExpired = timeLeft === 'Waktu habis!';
             const taskColor = task.completed
-              ? 'bg-green-200'
+              ? 'bg-purple-300'
               : isExpired
               ? 'bg-red-200'
-              : 'bg-yellow-200';
+              : 'bg-purple-200';
 
             return (
               <motion.li
-              key={task.id}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className={`flex flex-col justify-between p-2 border-b rounded-lg ${taskColor}`}
-            >
-              <div className="flex justify-between items-center">
-                <span
-                  onClick={() => toggleTask(task.id)}
-                  className={`cursor-pointer transition-500 ${
-                    task.completed
-                      ? 'line-through text-gray-500'
-                      : 'font-semibold text-gray-700'
-                  }`}
-                >
-                  {task.text}
-                </span>
-                <button
-                  onClick={() => deleteTask(task.id)}
-                  className="text-white p-1 rounded bg-red-600 hover:bg-red-800"
-                >
-                  Hapus
-                </button>
-              </div>
-              <p className="text-sm text-gray-700">
-                Deadline: {new Date(task.deadline).toLocaleString()}
-              </p>
-              <p className="text-xs font-semibold text-gray-700">
-                ⏳ {timeRemaining[task.id] || 'Menghitung...'}
-              </p>
-            </motion.li>
-          );
-        })}
-      </AnimatePresence>
-    </ul>
-  </div>
-);
+                key={task.id}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className={`flex flex-col justify-between p-4 border border-purple-300 rounded-xl shadow-sm text-purple-900 ${taskColor}`}
+              >
+                <div className="flex justify-between items-center">
+                  <span
+                    onClick={() => toggleTask(task.id)}
+                    className={`cursor-pointer transition-all ${
+                      task.completed
+                        ? 'line-through text-purple-600'
+                        : 'font-medium text-purple-900'
+                    }`}
+                  >
+                    {task.text}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => editTask(task)}
+                      className="text-white px-2 py-1 rounded bg-yellow-400 hover:bg-yellow-500 transition duration-300"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => deleteTask(task.id)}
+                      className="text-white px-2 py-1 rounded bg-red-400 hover:bg-red-600 transition duration-300"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm text-purple-800 mt-2">
+                  Deadline: {new Date(task.deadline).toLocaleString()}
+                </p>
+                <p className="text-xs font-medium text-purple-800">
+                  ⏳ {timeRemaining[task.id] || 'Menghitung...'}
+                </p>
+              </motion.li>
+            );
+          })}
+        </AnimatePresence>
+      </ul>
+    </div>
+  );
 }
-
-
- 
-
